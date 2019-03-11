@@ -2,20 +2,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MoveBlockStatus : MonoBehaviour
+public class PlayerController : MonoBehaviour
 {
-    public static bool active = false;
 
+    public static int PlayerNum = 0;
+    // Start is called before the first frame update
     void Start()
     {
-        MoveBlockController.MoveBlock.Add(gameObject);
-        gameObject.SetActive(false);
+        
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        
     }
-    
 }

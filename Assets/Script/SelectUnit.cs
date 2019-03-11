@@ -10,6 +10,7 @@ public class SelectUnit : MonoBehaviour
     public static bool isUnit = false;
     public static bool isDragged = false;
     public static RaycastHit hitInfo;
+    public static List<GameObject> Selected = new List<GameObject>();
 
     // Update is called once per frame
     void Update()
@@ -37,16 +38,16 @@ public class SelectUnit : MonoBehaviour
             if (Mathf.Abs(selection.size.x * selection.size.y) < 100)
             {
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-                if (Physics.Raycast(ray, out hitInfo, 100f))
+                if (Physics.Raycast(ray, out hitInfo))
                 {
                     int l = hitInfo.transform.gameObject.layer;
-                    if (l == 8)
-                    {
-                        isUnit = false;
-                    }
-                    else if (l == 9)
+                    if (l == 11)
                     {
                         isUnit = true;
+                    }
+                    else
+                    {
+                        isUnit = false;
                     }
                 }
             }

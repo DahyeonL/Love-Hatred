@@ -4,15 +4,20 @@ using UnityEngine;
 
 public class Status : MonoBehaviour
 {
+    [SerializeField]
+    private GameObject DeathEffect;
+
+    private string Condition;
+    public bool DistanceAttack;
+    public bool isAir;
     public int HP;
     public int AttackDamage;
     private int Armor;
     public float AttackRange;
     private int MoveSpeed;
-    private int AttackSpeed;
+    public float AttackSpeed;
     public int Player;
-    public bool fullyAttacked = false;
-    public List<GameObject> AttackMe;
+    public List<GameObject> AttackMe = new List<GameObject>();
     
 
     public void Damage(int HitDamage)
@@ -22,9 +27,13 @@ public class Status : MonoBehaviour
         {
             foreach(GameObject obj in AttackMe)
             {
-                obj.GetComponent<GroundUnit>().condition = "Stopping";
+                obj.GetComponent<Attacking>().Enemy = null;
             }
-            gameObject.GetComponent<GroundUnit>().Enemy.GetComponent<Status>().AttackMe.Remove(gameObject);
+            if (gameObject.GetComponent<Attacking>().Enemy != null)
+            {
+                gameObject.GetComponent<Attacking>().Enemy.GetComponent<Status>().AttackMe.Remove(gameObject);
+            }
+            //Instantiate(DeathEffect, transform.position, Quaternion.identity);
             Destroy(gameObject);
         }
     }
@@ -41,6 +50,37 @@ public class Status : MonoBehaviour
             die(count);
         }
     }
+
+    public bool GetisAir()
+    {
+        return isAir;
+    }
+
+    public void SetisAir(bool b)
+    {
+        isAir = b;
+    }
+
+    public bool GetDistanceAttack()
+    {
+        return DistanceAttack;
+    }
+
+    public void SetDistanceAttack(bool b)
+    {
+        DistanceAttack = b;
+    }
+
+    public string GetCondition()
+    {
+        return Condition;
+    }
+
+    public void SetCondition(string Con)
+    {
+        Condition = Con;
+    }
+
     public int GetHp()
     {
         return HP;
@@ -77,11 +117,11 @@ public class Status : MonoBehaviour
         this.AttackRange = AttackRange;
     }
 
-    public int GetAttackSpeed()
+    public float GetAttackSpeed()
     {
         return AttackSpeed;
     }
-    public void SetAttackSpeed(int AttackSpeed)
+    public void SetAttackSpeed(float AttackSpeed)
     {
         this.AttackSpeed = AttackSpeed;
     }
