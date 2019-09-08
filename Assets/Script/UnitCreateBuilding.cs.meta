@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: b0526dda2863ee54ba65a5cbf9851240
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - Flama: {fileID: 712156427386654227, guid: 53c9628e5fc07df479567663f4717108, type: 3}
+  - Crepo: {fileID: 5400966870487833079, guid: 80879c87a707bae4ba93835c388494cb, type: 3}
+  - Silba: {fileID: 9199844362231373619, guid: a04c79a98838ace498ea3622e4097025, type: 3}
+  - Fli: {fileID: 7097240903743916835, guid: c0e589337e7450441b1565a0553670a4, type: 3}
+  - Gari: {fileID: 484457466293624147, guid: 3befccaa15a12cf4cb7043a8aca27098, type: 3}
+  - Curo: {fileID: 473906707060296494, guid: cd3daeccbac8a024e9caf10807bd55c5, type: 3}
+  - Hema: {fileID: 5198117921538952583, guid: 187bbd0b6febbb042a7fe7b28b440add, type: 3}
+  - Sora: {fileID: 7463336573096060413, guid: 49341777f37bd214ea4e3e91a52a0ca3, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

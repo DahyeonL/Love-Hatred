@@ -4,22 +4,95 @@ using UnityEngine;
 
 public class SelectUnit : MonoBehaviour
 {
+    [SerializeField]
+    GameObject MainCanvas;
+    [SerializeField]
+    GameObject UnitCanvas;
+    [SerializeField]
+    GameObject ResourceCanvas;
+    [SerializeField]
+    GameObject BuildingCanvas;
+
+
     public Texture2D selectionHighlight = null;
     public static Rect selection = new Rect(0, 0, 0, 0);
     private Vector3 startClick = -Vector3.one;
     public static bool isUnit = false;
+    public static bool isBuilding = false;
     public static bool isDragged = false;
     public static RaycastHit hitInfo;
-    public static List<GameObject> Selected = new List<GameObject>();
+    public static List<GameObject> SelectedUnit = new List<GameObject>();
+    public static List<GameObject> SelectedBuilding = new List<GameObject>();
+
+    public void Restart()
+    {
+        selection = new Rect(0, 0, 0, 0);
+        startClick = -Vector3.one;
+        isUnit = false;
+        isBuilding = false;
+        isDragged = false;
+        SelectedUnit = new List<GameObject>();
+        SelectedBuilding = new List<GameObject>();
+        MainCanvas.SetActive(false);
+        transform.GetComponent<SelectUnit>().enabled = false;
+    }
 
     // Update is called once per frame
     void Update()
     {
+        UnitCanvas.SetActive(false);
+        ResourceCanvas.SetActive(false);
+        foreach (GameObject obj in PlayerController.TerraBuildings)
+        {
+            if (obj == null)
+            {
+                PlayerController.TerraBuildings.Remove(obj);
+            }
+            else
+                obj.GetComponent<TerraformingArea>().OffTerra();
+        }
+        if (SelectedBuilding.Count > 0)
+        {
+            
+            foreach (GameObject building in SelectedBuilding)
+            {
+                if (building.tag == "UnitCreateBuilding")
+                {
+                    MainCanvas.SetActive(false);
+                    BuildingCanvas.SetActive(false);
+                    UnitCanvas.SetActive(true);
+                }
+                else if(building.tag == "ResourceBuilding")
+                {
+                    MainCanvas.SetActive(false);
+                    BuildingCanvas.SetActive(false);
+                    ResourceCanvas.SetActive(true);
+                    foreach (GameObject obj in PlayerController.TerraBuildings)
+                    {
+                        obj.GetComponent<TerraformingArea>().OnTerra();
+                    }
+                }
+                else if(building.tag == "TerraformingBuilding")
+                {
+                    foreach(GameObject obj in PlayerController.TerraBuildings)
+                    {
+                        obj.GetComponent<TerraformingArea>().OnTerra();
+                    }
+                }
+            }
+        }
+        else
+        {
+            MainCanvas.SetActive(true);
+            UnitCanvas.SetActive(false);
+            ResourceCanvas.SetActive(false);
+        }
         if (Input.GetMouseButtonDown(0))
         {
             selection.size = new Vector2(0, 0);
             startClick = Input.mousePosition;
             isUnit = false;
+            isBuilding = false;
             isDragged = false;
         }
         else if (Input.GetMouseButtonUp(0))
@@ -44,10 +117,17 @@ public class SelectUnit : MonoBehaviour
                     if (l == 11)
                     {
                         isUnit = true;
+                        isBuilding = false;
+                    }
+                    else if(l == 10)
+                    {
+                        isBuilding = true;
+                        isUnit = false;
                     }
                     else
                     {
                         isUnit = false;
+                        isBuilding = false;
                     }
                 }
             }
@@ -60,7 +140,6 @@ public class SelectUnit : MonoBehaviour
                 isDragged = true;
             }
         }
-
     }
     private void OnGUI()
     {

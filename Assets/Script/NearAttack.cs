@@ -10,7 +10,6 @@ public class NearAttack : Attacking
     // Start is called before the first frame update
     void Start()
     {
-        DistanceAttack = transform.GetComponent<Status>().GetDistanceAttack();
         moving = transform.GetComponent<Moving>();
     }
 
@@ -29,6 +28,21 @@ public class NearAttack : Attacking
 
     private void DetectEnemy()
     {
+        if(Condition == "OnlyMoving")
+        {
+            if(Enemy != null)
+                Enemy = null;
+            colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10);
+            foreach (Collider col in colliders)
+            {
+                if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && !col.gameObject.GetPhotonView().isMine)
+                {
+                    transform.GetComponent<Status>().SetVisible(true);
+                    return;
+                }
+            }
+            transform.GetComponent<Status>().SetVisible(false);
+        }
         if (Condition != "Attacking" && Condition != "OnlyMoving" && Condition != "ARMoving")
         {
             if (Enemy != null)
@@ -39,7 +53,11 @@ public class NearAttack : Attacking
             colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), transform.GetComponent<Status>().GetAttackRange() - 0.1f);
             foreach (Collider col in colliders)
             {
-                if (col.gameObject.layer == 11 && col.tag == "GroundUnit" && col.GetComponent<Status>().GetHp() >= 0 && col.GetComponent<Status>().GetPlayer() != transform.GetComponent<Status>().GetPlayer())
+                if((col.gameObject.layer == 11 || col.gameObject.layer == 10) && !col.gameObject.GetPhotonView().isMine)
+                {
+                    transform.GetComponent<Status>().SetVisible(true);
+                }
+                if (((col.gameObject.layer == 11 && (col.tag == "GroundUnit" || col.tag == "Worker")) || col.gameObject.layer == 10) && col.GetComponent<Status>().GetHp() >= 0 && !col.gameObject.GetPhotonView().isMine)
                 {
                     if (Enemy == null)
                     {
@@ -47,51 +65,21 @@ public class NearAttack : Attacking
                     }
                     else
                     {
-                        if (Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                        if (Enemy.gameObject.layer == 11)
+                        {
+                            if (col.gameObject.layer == 11 && Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                            {
+                                Enemy = col;
+                            }
+                        }
+                        else if (col.gameObject.layer == 11)
                         {
                             Enemy = col;
                         }
                     }
                 }
             }
-            if (Enemy != null)
-            {
-                if(Condition == "Stopping")
-                {
-                    moving.DestBeforeAttack = transform.position;
-                }
-                else if(Condition == "Moving" || Condition == "OnlyMoving")
-                {
-                    moving.DestBeforeAttack = moving.Destination;
-                }
-                moving.Destination = Enemy.transform.position;
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
-                moving.nv.stoppingDistance = 0;
-                SetCondition("Attacking");
-                Enemy.GetComponent<Status>().AttackMe.Add(gameObject);
-                Attack = true;
-                return;
-            }
-            colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10f);
-            foreach (Collider col in colliders)
-            {
-                if (col.gameObject.layer == 11 && col.tag == "GroundUnit" && col.GetComponent<Status>().GetHp() >= 0 && col.GetComponent<Status>().GetPlayer() != transform.GetComponent<Status>().GetPlayer())
-                {
-                    if (Enemy == null)
-                    {
-                        Enemy = col;
-                    }
-                    else
-                    {
-                        if (Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
-                        {
-                            Enemy = col;
-                        }
-                    }
-                }
-            }
-            if (Enemy != null)
+            if (Enemy != null && Enemy.gameObject.layer == 11)
             {
                 if (Condition == "Stopping")
                 {
@@ -102,16 +90,75 @@ public class NearAttack : Attacking
                     moving.DestBeforeAttack = moving.Destination;
                 }
                 moving.Destination = Enemy.transform.position;
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
+                moving.nv.isStopped = false;
+                moving.nv.SetDestination(moving.Destination);
                 moving.nv.stoppingDistance = 0;
-                SetCondition("Tracing");
+                SetCondition("Attacking");
                 Enemy.GetComponent<Status>().AttackMe.Add(gameObject);
-                Attack = false;
+                Attack = true;
                 return;
             }
+            else if (Enemy != null && Enemy.gameObject.layer == 10)
+            {
+                Attack = true;
+            }
+            colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10f);
+            foreach (Collider col in colliders)
+            {
+                if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && !col.gameObject.GetPhotonView().isMine)
+                {
+                    transform.GetComponent<Status>().SetVisible(true);
+                }
+                if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && col.GetComponent<Status>().GetHp() >= 0 && !col.gameObject.GetPhotonView().isMine)
+                {
+                    if (Enemy == null)
+                    {
+                        Enemy = col;
+                    }
+                    else
+                    {
+                        if (Enemy.gameObject.layer == 11)
+                        {
+                            if (col.gameObject.layer == 11 && Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                            {
+                                Enemy = col;
+                            }
+                        }
+                        else if (col.gameObject.layer == 11)
+                        {
+                            Enemy = col;
+                        }
+                    }
+                }
+            }
+            if (Enemy != null)
+            {
+                if (Enemy.gameObject.tag != "AirUnit")
+                {
+                    if (Condition == "Stopping")
+                    {
+                        moving.DestBeforeAttack = transform.position;
+                    }
+                    else if (Condition == "Moving" || Condition == "OnlyMoving")
+                    {
+                        moving.DestBeforeAttack = moving.Destination;
+                    }
+                    moving.Destination = Enemy.transform.position;
+                    moving.nv.isStopped = false;
+                    moving.nv.SetDestination(moving.Destination);
+                    moving.nv.stoppingDistance = 0;
+                    SetCondition("Tracing");
+                    Enemy.GetComponent<Status>().AttackMe.Add(gameObject);
+                    if (!Attack)
+                    {
+                        Attack = false;
+                    }
+                }
+                return;
+            }
+            transform.GetComponent<Status>().SetVisible(false);
         }
-        else if(Condition == "Attacking")
+        else if (Condition == "Attacking")
         {
             colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), transform.GetComponent<Status>().GetAttackRange());
             foreach (Collider col in colliders)
@@ -123,26 +170,83 @@ public class NearAttack : Attacking
                 }
             }
             Attack = false;
-            moving.nvo.enabled = false;
-            moving.nv.enabled = true;
             moving.nv.stoppingDistance = 0;
             SetCondition("Moving");
             moving.Destination = moving.DestBeforeAttack;
+            moving.nv.isStopped = false;
+            moving.nv.SetDestination(moving.Destination);
+        }
+    }
+
+    private void FindEnemy()
+    {
+        if (EnemyID != 0)
+        {
+            FindedEnemy = PhotonView.Find(EnemyID).gameObject;
+            if (AttackSpeed > 0)
+            {
+                AttackSpeed = AttackSpeed - Time.deltaTime;
+            }
+            if (AttackSpeed <= 0)
+            {
+                FindedEnemy.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage() + Bonus);
+                if (Splash)
+                {
+                    colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 3);
+                    foreach (Collider col in colliders)
+                    {
+                        if (col.gameObject.layer == 11 && col != FindedEnemy)
+                        {
+                            col.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage() + Bonus);
+                        }
+                    }
+                    transform.GetComponent<PhotonView>().TransferOwnership(PhotonNetwork.player.ID);
+                    PhotonNetwork.Destroy(gameObject);
+                }
+                AttackSpeed = transform.GetComponent<Status>().GetAttackSpeed();
+            }
+        }
+        else
+        {
+            Attack = false;
         }
     }
 
     private void Attacking()
     {
-        DetectEnemy();
+        if (photonView.isMine)
+        {
+            if (Condition == "Building")
+            {
+                colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10);
+                foreach (Collider col in colliders)
+                {
+                    if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && !col.gameObject.GetPhotonView().isMine)
+                    {
+                        Debug.Log(col.name);
+                        transform.GetComponent<Status>().SetVisible(true);
+                        return;
+                    }
+                }
+                transform.GetComponent<Status>().SetVisible(false);
+                return;
+            }
+            DetectEnemy();
+        }
+        else
+        {
+            FindEnemy();
+            return;
+        }
         if (Condition == "Tracing" || Condition == "Attacking")
         {
             if (Enemy == null || Enemy.GetComponent<Status>().GetHp() <= 0)
             {
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
                 moving.nv.stoppingDistance = 0;
                 SetCondition("Moving");
                 moving.Destination = moving.DestBeforeAttack;
+                moving.nv.isStopped = false;
+                moving.nv.SetDestination(moving.Destination);
                 Attack = false;
                 return;
             }
@@ -161,17 +265,26 @@ public class NearAttack : Attacking
                 }
                 if (AttackSpeed <= 0)
                 {
-                    Enemy.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage());
+                    Enemy.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage() + Bonus);
+                    foreach (GameObject obj in transform.GetComponent<Status>().AttackMe)
+                    {
+                        obj.GetComponent<Attacking>().Enemy = null;
+                    }
+                    if (gameObject.GetComponent<Attacking>().Enemy != null)
+                    {
+                        gameObject.GetComponent<Attacking>().Enemy.GetComponent<Status>().AttackMe.Remove(gameObject);
+                    }
+                    SelectUnit.SelectedUnit.Remove(gameObject);
                     AttackSpeed = transform.GetComponent<Status>().GetAttackSpeed();
                 }
                 SetCondition("Attacking");
                 if (Enemy == null || Enemy.GetComponent<Status>().GetHp() <= 0)
                 {
-                    moving.nvo.enabled = false;
-                    moving.nv.enabled = true;
                     moving.nv.stoppingDistance = 0;
                     SetCondition("Moving");
                     moving.Destination = moving.DestBeforeAttack;
+                    moving.nv.isStopped = false;
+                    moving.nv.SetDestination(moving.Destination);
                     Attack = false;
                     return;
                 }

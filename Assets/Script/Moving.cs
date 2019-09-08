@@ -3,21 +3,21 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class Moving : MonoBehaviour
+public class Moving : Photon.MonoBehaviour
 {
     public string Condition;
-    
+
     //Moving
     public NavMeshAgent nv;
     public NavMeshObstacle nvo;
     protected float predistance = 0;
     public Vector3 MyDset;
-    protected int WaitCount = 0;
+    public int WaitCount = 0;
     protected int predirection;
     public Vector3 Destination;
     protected Vector3 ClickPosition;
     protected int MapLayer = 9;
-    protected Vector3 final;
+    public Vector3 final;
     protected bool ARMoving = false;
     protected GameObject ARMoveDest;
     protected GameObject ARMoveStart;

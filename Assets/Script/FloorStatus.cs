@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class FloorStatus : MonoBehaviour
 {
+    [SerializeField]
+    GameObject effect;
     private float half_width;
     private float half_height;
     private float half_thickness;
@@ -12,6 +14,7 @@ public class FloorStatus : MonoBehaviour
     private Vector3 ConnectedEdgeVector;
     private string ConnectedEdgeString;
     private float time = 0f;
+    GameObject Effect;
 
     void Start()
     {
@@ -29,6 +32,19 @@ public class FloorStatus : MonoBehaviour
     void Update()
     {
         CheckEdge();
+        if (ARMove && Effect == null)
+        {
+            Effect = Instantiate(effect, transform.position, Quaternion.identity);
+            
+        }
+        else if (ARMove && Effect != null && !Effect.GetComponent<ParticleSystem>().isPlaying)
+        {
+            Effect.GetComponent<ParticleSystem>().Play();
+        }
+        else if (!ARMove && Effect != null)
+        {
+            Destroy(Effect);
+        }
     }
 
     public bool getARMove()

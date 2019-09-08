@@ -2,92 +2,42 @@
 using System.Collections.Generic;
 using UnityEngine;
 using GoogleARCore;
+using UnityEngine.AI;
 
-public class BuildingStatus : MonoBehaviour
+public class BuildingStatus : Status
 {
-    [SerializeField]
-    private GameObject CheckCube;
+    public bool builded = false;
 
-    private bool Isbuild = false;
+    Collider[] colliders;
 
-    // Start is called before the first frame update
-    void Start()
+    private void Update()
     {
-        CheckCube.GetComponent<Renderer>().material.color = new Color(0, 1, 0, 0.25f);
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        Dragging();
-    }
-
-    public void BuildCheck()
-    {
-
-    }
-
-    public void Dragging()
-    {   if (Input.GetMouseButton(0) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(0))
+        if(photonView.isMine && !Visible)
+            FindEnemy();
+        else
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit[] rayInfos;
-            RaycastHit plane = new RaycastHit();
-            int mask = 1 << LayerMask.NameToLayer("Map");
-            rayInfos = Physics.RaycastAll(ray, Mathf.Infinity, mask);
-            if (rayInfos.Length == 1)
+            if (Visible)
             {
-                plane = rayInfos[0];
+                transform.GetComponent<ObjectVisualizer>().SetVisible();
             }
-            else if (rayInfos.Length == 2)
+            else
             {
-                foreach (RaycastHit rayinfo in rayInfos)
-                {
-                    if (rayinfo.transform.tag == "2Floor" || rayinfo.transform.tag == "Slope")
-                    {
-                        plane = rayinfo;
-                        break;
-                    }
-                }
+                transform.GetComponent<ObjectVisualizer>().SetInvisible();
             }
-            else if (rayInfos.Length == 3)
-            {
-                foreach (RaycastHit rayinfo in rayInfos)
-                {
-                    if (rayinfo.transform.tag == "3Floor" || rayinfo.transform.tag == "Slope")
-                    {
-                        plane = rayinfo;
-                        break;
-                    }
-                }
-            }
-            transform.position = plane.point;
         }
     }
 
-    public void Build()
+    void FindEnemy()
     {
-        Destroy(CheckCube);
-        Isbuild = true;
-        transform.GetComponent<BuildingStatus>().enabled = false;
-    }
-
-    public void Cancel()
-    {
-        if(Isbuild == false)
+        colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10);
+        foreach (Collider col in colliders)
         {
-            Destroy(gameObject);
+            if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && !col.gameObject.GetPhotonView().isMine)
+            {
+                transform.GetComponent<Status>().SetVisible(true);
+                return;
+            }
         }
-    }
-
-
-    public void OnTriggerStay(Collider other)
-    {
-        CheckCube.GetComponent<Renderer>().material.color = new Color(1, 0, 0, 0.25f);
-    }
-
-    public void OnTriggerExit(Collider other)
-    {
-        CheckCube.GetComponent<Renderer>().material.color = new Color(0, 1, 0, 0.25f);
+        transform.GetComponent<Status>().SetVisible(false);
     }
 }

@@ -4,15 +4,21 @@ using UnityEngine;
 
 public class Effect : MonoBehaviour
 {
-    // Start is called before the first frame update
+    private ParticleSystem ps;
+
     void Start()
     {
-        Destroy(gameObject, 0.5f);
+        ps = GetComponent<ParticleSystem>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        
+        if (ps)
+        {
+            if (!ps.IsAlive())
+            {
+                Destroy(gameObject);
+            }
+        }
     }
 }

@@ -2,73 +2,57 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Status : MonoBehaviour
+public class Status : Photon.MonoBehaviour
 {
     [SerializeField]
-    private GameObject DeathEffect;
+    protected GameObject DeathEffect;
 
-    private string Condition;
-    public bool DistanceAttack;
-    public bool isAir;
-    public int HP;
+    protected string Condition;
+    public float MaxHP;
+    public float HP;
     public int AttackDamage;
-    private int Armor;
+    protected int Armor;
     public float AttackRange;
-    private int MoveSpeed;
+    protected int MoveSpeed;
     public float AttackSpeed;
-    public int Player;
+    public bool Visible = false;
+    protected bool Healing = false;
+    protected float count = 0f;
+    public int Cost;
+    public float CreatingTime;
     public List<GameObject> AttackMe = new List<GameObject>();
-    
 
     public void Damage(int HitDamage)
     {
-        HP = HP - HitDamage;
-        if (HP <= 0)
+        if (photonView.isMine)
         {
-            foreach(GameObject obj in AttackMe)
+            HP = HP - HitDamage;
+            if (HP <= 0)
             {
-                obj.GetComponent<Attacking>().Enemy = null;
+                foreach (GameObject obj in AttackMe)
+                {
+                    obj.GetComponent<Attacking>().Enemy = null;
+                }
+                if (gameObject.layer == 11)
+                {
+                    if (gameObject.GetComponent<Attacking>().Enemy != null)
+                    {
+                        gameObject.GetComponent<Attacking>().Enemy.GetComponent<Status>().AttackMe.Remove(gameObject);
+                    }
+                    SelectUnit.SelectedUnit.Remove(gameObject);
+                    if (transform.tag == "Worker")
+                    {
+                        BuildManager.Workers.Remove(gameObject);
+                    }
+                }
+                else if (gameObject.layer == 10)
+                {
+                    SelectUnit.SelectedBuilding.Remove(gameObject);
+                    ScoreController.MyBuildings = ScoreController.MyBuildings - 1;
+                }
+                PhotonNetwork.Destroy(gameObject);
             }
-            if (gameObject.GetComponent<Attacking>().Enemy != null)
-            {
-                gameObject.GetComponent<Attacking>().Enemy.GetComponent<Status>().AttackMe.Remove(gameObject);
-            }
-            //Instantiate(DeathEffect, transform.position, Quaternion.identity);
-            Destroy(gameObject);
         }
-    }
-
-    private void die(int count)
-    {
-        if(count == 0)
-        {
-            Destroy(gameObject);
-        }
-        else
-        {
-            count = count - 1;
-            die(count);
-        }
-    }
-
-    public bool GetisAir()
-    {
-        return isAir;
-    }
-
-    public void SetisAir(bool b)
-    {
-        isAir = b;
-    }
-
-    public bool GetDistanceAttack()
-    {
-        return DistanceAttack;
-    }
-
-    public void SetDistanceAttack(bool b)
-    {
-        DistanceAttack = b;
     }
 
     public string GetCondition()
@@ -81,12 +65,22 @@ public class Status : MonoBehaviour
         Condition = Con;
     }
 
-    public int GetHp()
+    public float GetMaxHP()
+    {
+        return MaxHP;
+    }
+
+    public void SetMaxHP(float MaxHP)
+    {
+        this.MaxHP = MaxHP;
+    }
+
+    public float GetHp()
     {
         return HP;
     }
 
-    public void SetHP(int HP)
+    public void SetHP(float HP)
     {
         this.HP = HP;
     }
@@ -125,12 +119,28 @@ public class Status : MonoBehaviour
     {
         this.AttackSpeed = AttackSpeed;
     }
-    public int GetPlayer()
+    public bool GetVisible()
     {
-        return Player;
+        return Visible;
     }
-    public void SetPlayer(int Player)
+    public void SetVisible(bool b)
     {
-        this.Player = Player;
+        Visible = b;
+    }
+    public bool GetHealing()
+    {
+        return Healing;
+    }
+    public void SetHealing(bool b)
+    {
+        Healing = b;
+    }
+    public int GetCost()
+    {
+        return Cost;
+    }
+    public float GetTime()
+    {
+        return CreatingTime;
     }
 }

@@ -5,22 +5,48 @@ using UnityEngine.AI;
 
 public class GroundMove : Moving
 {
+    private void Awake()
+    {
+        nv = GetComponent<NavMeshAgent>();
+        nvo = GetComponent<NavMeshObstacle>();
+        if (photonView.isMine)
+        {
+            nvo.enabled = false;
+            nv.enabled = true;
+
+            transform.GetComponent<Status>().SetCondition("Create");
+        }
+        else
+        {
+            nv.enabled = false;
+            nvo.enabled = true;
+        }
+    }
     // Start is called before the first frame update
     void Start()
     {
-        nv = GetComponent<NavMeshAgent>();
-        nv.angularSpeed = 1000f;
-        nvo = GetComponent<NavMeshObstacle>();
-        nv.enabled = false;
-        nvo.enabled = true;
-        final = transform.position;
+
     }
 
     // Update is called once per frame
     void Update()
     {
         Condition = transform.GetComponent<Status>().GetCondition();
-        Moving();
+        if (photonView.isMine)
+        {
+            Moving();
+        }
+        else
+        {
+            if (transform.GetComponent<Status>().GetVisible())
+            {
+                transform.GetComponent<ObjectVisualizer>().SetVisible();
+            }
+            else
+            {
+                transform.GetComponent<ObjectVisualizer>().SetInvisible();
+            }
+        }
     }
 
     private void SetCondition(string Con)
@@ -28,12 +54,11 @@ public class GroundMove : Moving
         Condition = Con;
         transform.GetComponent<Status>().SetCondition(Con);
     }
-    public void Move(Vector3 Dest)
+
+    private void Moving()
     {
-        if (ARMoving == true)
+        if (ARMoving)
         {
-            nv.SetDestination(Dest);
-            nv.stoppingDistance = 0;
             if (ARMoveDest != null && ARMoveDest.GetComponent<FloorStatus>().getARMove() == false)
             {
                 ARMoving = false;
@@ -46,7 +71,6 @@ public class GroundMove : Moving
                 if (Mathf.Abs(transform.position.z - ARMoveStart.GetComponent<FloorStatus>().getConnectedEdgeVector().z) < 0.8)
                 {
                     transform.position = ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector() + (ARMoveDest.transform.position - ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector()) / 10;
-                    final = ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector() + (ARMoveDest.transform.position - ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector()) / 10;
                     SetCondition("ARMoving");
                     ARMoving = false;
                 }
@@ -56,73 +80,38 @@ public class GroundMove : Moving
                 if (Mathf.Abs(transform.position.x - ARMoveStart.GetComponent<FloorStatus>().getConnectedEdgeVector().x) < 0.8)
                 {
                     transform.position = ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector() + (ARMoveDest.transform.position - ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector()) / 10;
-                    final = ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector() + (ARMoveDest.transform.position - ARMoveDest.GetComponent<FloorStatus>().getConnectedEdgeVector()) / 10;
                     SetCondition("ARMoving");
                     ARMoving = false;
                 }
             }
         }
-        if (WaitCount < 3)
+        if (Condition == "Moving" || Condition == "Tracing" || Condition == "OnlyMoving" || Condition == "Building")
         {
-            nv.stoppingDistance = 0;
-            transform.position = final;
-            WaitCount = WaitCount + 1;
-            MyDset = Destination;
-        }
-        else if (Destination == Dest)
-        {
-            nv.SetDestination(Dest);
-        }
-        if (Mathf.Abs(predistance - nv.remainingDistance) < nv.speed * 0.005)
-        {
-            if (Condition != "Tracing")
-            {
-                if (nv.stoppingDistance > 1)
-                {
-                    predirection = FindingPath(Destination, MyDset, predirection);
-                }
-                nv.stoppingDistance += 0.1f;
-            }
-        }
-        predistance = nv.remainingDistance;
-        final = transform.position;
-    }
-
-    private void Moving()
-    {
-        if (nv.enabled == true && Vector3.Distance(transform.position, Destination) <= nv.stoppingDistance && (Condition == "Moving" || Condition == "OnlyMoving"))
-        {
-            SetCondition("Stopping");
-        }
-        else if (Condition == "Moving" || Condition == "Tracing" || Condition == "OnlyMoving")
-        {
-            Move(Destination);
             if (transform.GetComponent<Attacking>().Enemy != null && Condition != "Tracing")
             {
                 transform.GetComponent<Attacking>().Enemy.GetComponent<Status>().AttackMe.Remove(gameObject);
                 transform.GetComponent<Attacking>().Enemy = null;
             }
         }
-        else if (Condition == "Stopping" || Condition == "Attacking")
+        if (Condition == "ARMoving")
         {
-            WaitCount = 0;
-            transform.position = final;
             nv.enabled = false;
-            nvo.enabled = true;
-        }
-        else if (Condition == "ARMoving")
-        {
-            transform.position = final;
-            nv.enabled = false;
-            nvo.enabled = true;
             SetCondition("Moving");
-            nvo.enabled = false;
-            nv.enabled = true;
             Destination = ARDestination;
+            nv.enabled = true;
+            nv.isStopped = false;
             nv.SetDestination(Destination);
         }
+        else if (Condition == "Create")
+        {
+            SetCondition("Stopping");
+        }
+        else if (Condition == "Stopping" || Condition == "Attacking")
+        {
+            nv.ResetPath();
+        }
 
-        if (Input.GetMouseButtonUp(0) && transform.GetComponent<Selecting>().selected == true && SelectUnit.isDragged == false)
+        if (Input.GetMouseButtonUp(0) && transform.GetComponent<Selecting>().selected == true && SelectUnit.isDragged == false && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(-1))
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hitInfo;
@@ -135,11 +124,23 @@ public class GroundMove : Moving
             {
                 int mask;
                 mask = 1 << LayerMask.NameToLayer("Map");
-                hitInfos = Physics.RaycastAll(ray2, 100f, mask);
-                foreach(RaycastHit col in hitInfos)
+                hitInfos = Physics.RaycastAll(ray2, 200f, mask);
+                /*Debug.Log(hitInfos.Length);
+                foreach(RaycastHit a in hitInfos)
                 {
-                    Debug.Log(col.transform.name);
-                }
+                    Debug.Log(a.collider.name);
+                }*/
+                /*foreach(RaycastHit hit in hitInfos)
+                {
+                    if (hitInfo2.collider == null)
+                    {
+                        hitInfo2 = hit;
+                    }
+                    else
+                    {
+                        if (hit.collider.tag == "Plane"
+                    }
+                }*/
                 if (hitInfos.Length == 1)
                 {
                     hitInfo2 = hitInfos[0];
@@ -159,7 +160,7 @@ public class GroundMove : Moving
                 {
                     for (int i = 0; i < hitInfos.Length; i++)
                     {
-                        if (hitInfos[i].transform.tag == "3Floor" || hitInfos[i].transform.tag == "Slope")
+                        if (hitInfos[i].transform.tag == "3Floor" || hitInfos[i].transform.tag == "2Floor")
                         {
                             hitInfo2 = hitInfos[i];
                             break;
@@ -170,9 +171,6 @@ public class GroundMove : Moving
                 if (l == MapLayer)
                 {
                     Destination = hitInfo.point;
-                    nvo.enabled = false;
-                    nv.enabled = true;
-                    nv.stoppingDistance = 0;
                     if ((hitInfo2.transform.tag == "2Floor" || hitInfo2.transform.tag == "3Floor") && hitInfo2.transform.GetComponent<FloorStatus>().getARMove() == true && (hitInfo.transform.tag == "2Floor" || hitInfo.transform.tag == "3Floor") && hitInfo.transform.GetComponent<FloorStatus>().getARMove() == true)
                     {
                         if (hitInfo.transform.gameObject != hitInfo2.transform.gameObject)
@@ -182,6 +180,7 @@ public class GroundMove : Moving
                             ARMoving = true;
                             ARDestination = Destination;
                             Destination = hitInfo2.transform.GetComponent<FloorStatus>().getConnectedEdgeVector();
+                            nv.isStopped = false;
                             nv.SetDestination(Destination);
                         }
                         else
@@ -198,70 +197,17 @@ public class GroundMove : Moving
                     if (ClickController.DoubleClicked == false)
                     {
                         SetCondition("Moving");
-                        Move(Destination);
+                        nv.isStopped = false;
+                        nv.SetDestination(Destination);
                     }
                     else
                     {
                         SetCondition("OnlyMoving");
-                        Move(Destination);
+                        nv.isStopped = false;
+                        nv.SetDestination(Destination);
                     }
                 }
             }
         }
-    }
-    
-    private int FindingPath(Vector3 Dest, Vector3 MyDest, int num)
-    {
-        int RandomNum;
-        Vector3 newDset = MyDest;
-        if (Destination == Dest)
-        {
-            RandomNum = Random.Range(1, 5);
-            if (RandomNum == 1)
-            {
-                newDset.x += 0.1f;
-            }
-            else if (RandomNum == 2)
-            {
-                newDset.z += 0.1f;
-            }
-            else if (RandomNum == 3)
-            {
-                newDset.x -= 0.1f;
-            }
-            else if (RandomNum == 4)
-            {
-                newDset.z -= 0.1f;
-            }
-            nv.SetDestination(newDset);
-            this.MyDset = newDset;
-        }
-        else
-        {
-            RandomNum = Random.Range(1, 5);
-            while (!(RandomNum != num && RandomNum % 2 == num % 2))
-            {
-                RandomNum = Random.Range(1, 5);
-            }
-            if (RandomNum == 1)
-            {
-                newDset.x += 0.1f;
-            }
-            else if (RandomNum == 2)
-            {
-                newDset.z += 0.1f;
-            }
-            else if (RandomNum == 3)
-            {
-                newDset.x -= 0.1f;
-            }
-            else if (RandomNum == 4)
-            {
-                newDset.z -= 0.1f;
-            }
-            nv.SetDestination(newDset);
-            this.MyDset = newDset;
-        }
-        return RandomNum;
     }
 }

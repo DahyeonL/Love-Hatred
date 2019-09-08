@@ -34,4 +34,11 @@ public class ClickController : MonoBehaviour
             }
         }
     }
+
+    public void Restart()
+    {
+        DoubleClicked = false;
+        waitcount = 0;
+        transform.GetComponent<ClickController>().enabled = true;
+    }
 }

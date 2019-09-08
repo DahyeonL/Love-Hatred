@@ -14,7 +14,6 @@ public class DistanceAttack : Attacking
     // Start is called before the first frame update
     void Start()
     {
-        DistanceAttack = transform.GetComponent<Status>().GetDistanceAttack();
         moving = transform.GetComponent<Moving>();
     }
 
@@ -33,7 +32,22 @@ public class DistanceAttack : Attacking
 
     private void DetectEnemy()
     {
-        if (Condition != "Attacking" && Condition != "OnlyMoving" && Condition != "ARMoving")
+        if (Condition == "OnlyMoving")
+        {
+            if (Enemy != null)
+                Enemy = null;
+            colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10);
+            foreach (Collider col in colliders)
+            {
+                if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && !col.gameObject.GetPhotonView().isMine)
+                {
+                    transform.GetComponent<Status>().SetVisible(true);
+                    return;
+                }
+            }
+            transform.GetComponent<Status>().SetVisible(false);
+        }
+        else if (Condition != "Attacking" && Condition != "OnlyMoving" && Condition != "ARMoving")
         {
             if (Enemy != null)
             {
@@ -43,22 +57,30 @@ public class DistanceAttack : Attacking
             colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), transform.GetComponent<Status>().GetAttackRange());
             foreach (Collider col in colliders)
             {
-                if (col.gameObject.layer == 11 && col.GetComponent<Status>().GetHp() >= 0 && col.GetComponent<Status>().GetPlayer() != transform.GetComponent<Status>().GetPlayer())
+                if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && col.GetComponent<Status>().GetHp() >= 0 && !col.gameObject.GetPhotonView().isMine)
                 {
+                    transform.GetComponent<Status>().SetVisible(true);
                     if (Enemy == null)
                     {
                         Enemy = col;
                     }
                     else
                     {
-                        if (Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                        if (Enemy.gameObject.layer == 11)
+                        {
+                            if(col.gameObject.layer == 11 && Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                            {
+                                Enemy = col;
+                            }
+                        }
+                        else if(col.gameObject.layer == 11)
                         {
                             Enemy = col;
                         }
                     }
                 }
             }
-            if (Enemy != null)
+            if (Enemy != null && Enemy.gameObject.layer == 11)
             {
                 if (Condition == "Stopping")
                 {
@@ -69,26 +91,38 @@ public class DistanceAttack : Attacking
                     moving.DestBeforeAttack = moving.Destination;
                 }
                 moving.Destination = Enemy.transform.position;
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
+                moving.nv.isStopped = false;
+                moving.nv.SetDestination(moving.Destination);
                 moving.nv.stoppingDistance = 0;
                 SetCondition("Tracing");
                 Enemy.GetComponent<Status>().AttackMe.Add(gameObject);
                 Attack = true;
                 return;
             }
+            else if(Enemy != null && Enemy.gameObject.layer == 10)
+            {
+                Attack = true;
+            }
             colliders = Physics.OverlapCapsule(transform.position - new Vector3(0, 10, 0), transform.position + new Vector3(0, 10, 0), 10f);
             foreach (Collider col in colliders)
             {
-                if (col.gameObject.layer == 11 && col.GetComponent<Status>().GetHp() >= 0 && col.GetComponent<Status>().GetPlayer() != transform.GetComponent<Status>().GetPlayer())
+                if ((col.gameObject.layer == 11 || col.gameObject.layer == 10) && col.GetComponent<Status>().GetHp() >= 0 && !col.gameObject.GetPhotonView().isMine)
                 {
+                    transform.GetComponent<Status>().SetVisible(true);
                     if (Enemy == null)
                     {
                         Enemy = col;
                     }
                     else
                     {
-                        if (Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                        if (Enemy.gameObject.layer == 11)
+                        {
+                            if (col.gameObject.layer == 11 && Enemy.GetComponent<Status>().AttackMe.Count > col.GetComponent<Status>().AttackMe.Count)
+                            {
+                                Enemy = col;
+                            }
+                        }
+                        else if (col.gameObject.layer == 11)
                         {
                             Enemy = col;
                         }
@@ -106,24 +140,28 @@ public class DistanceAttack : Attacking
                     moving.DestBeforeAttack = moving.Destination;
                 }
                 moving.Destination = Enemy.transform.position;
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
+                moving.nv.isStopped = false;
+                moving.nv.SetDestination(moving.Destination);
                 moving.nv.stoppingDistance = 0;
                 SetCondition("Tracing");
                 Enemy.GetComponent<Status>().AttackMe.Add(gameObject);
-                Attack = false;
+                if (!Attack)
+                {
+                    Attack = false;
+                }
                 return;
             }
+            transform.GetComponent<Status>().SetVisible(false);
         }
         else if(Condition == "Attacking")
         {
             if (Enemy == null || Enemy.GetComponent<Status>().GetHp() <= 0)
             {
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
                 moving.nv.stoppingDistance = 0;
                 SetCondition("Moving");
                 moving.Destination = moving.DestBeforeAttack;
+                moving.nv.isStopped = false;
+                moving.nv.SetDestination(moving.Destination);
                 Attack = false;
                 return;
             }
@@ -136,28 +174,71 @@ public class DistanceAttack : Attacking
                     return;
                 }
             }
-            Debug.Log(transform.name);
             Attack = false;
-            moving.nvo.enabled = false;
-            moving.nv.enabled = true;
             moving.nv.stoppingDistance = 0;
             SetCondition("Moving");
             moving.Destination = Enemy.transform.position;
+            moving.nv.isStopped = false;
+            moving.nv.SetDestination(moving.Destination);
+        }
+    }
+
+    private void FindEnemy()
+    {
+        if(EnemyID != 0)
+        {
+            if (!(FindedEnemy = PhotonView.Find(EnemyID).gameObject))
+            {
+                return;
+            }
+            if (AttackSpeed > 0)
+            {
+                AttackSpeed = AttackSpeed - Time.deltaTime;
+            }
+            if (AttackSpeed <= 0)
+            {
+                FindedEnemy.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage() + Bonus);
+                if (Splash)
+                {
+                    colliders = Physics.OverlapCapsule(FindedEnemy.transform.position - new Vector3(0, 10, 0), FindedEnemy.transform.position + new Vector3(0, 10, 0), 3);
+                    foreach (Collider col in colliders)
+                    {
+                        if (col.gameObject.layer == 11 && col != FindedEnemy)
+                        {
+                            col.GetComponent<Status>().Damage((GetComponent<Status>().GetAttackDamage() / 2) + Bonus);
+                        }
+                    }
+                }
+                AttackSpeed = transform.GetComponent<Status>().GetAttackSpeed();
+                shotprefab = Instantiate(shot, transform.position + new Vector3(0, 1, 0), Quaternion.identity);
+                shotprefab.GetComponent<Throw>().FindedEnemy = FindedEnemy;
+            }
+        }
+        else
+        {
+            Attack = false;
         }
     }
 
     private void Attacking()
     {
-        DetectEnemy();
+        if (photonView.isMine)
+        {
+            DetectEnemy();
+        }
+        else
+        {
+            FindEnemy();
+            return;
+        }
         if (Condition == "Tracing" || Condition == "Attacking")
         {
             if (Enemy == null || Enemy.GetComponent<Status>().GetHp() <= 0)
             {
-                moving.nvo.enabled = false;
-                moving.nv.enabled = true;
-                moving.nv.stoppingDistance = 0;
                 SetCondition("Moving");
                 moving.Destination = moving.DestBeforeAttack;
+                moving.nv.isStopped = false;
+                moving.nv.SetDestination(moving.Destination);
                 Attack = false;
                 return;
             }
@@ -166,9 +247,11 @@ public class DistanceAttack : Attacking
                 if (Enemy.transform.position != moving.MyDset)
                 {
                     moving.Destination = Enemy.transform.position;
+                    moving.nv.isStopped = false;
+                    moving.nv.SetDestination(moving.Destination);
                 }
             }
-            if (Attack)
+            if (Attack) //뒷부분
             {
                 if (AttackSpeed > 0)
                 {
@@ -176,7 +259,7 @@ public class DistanceAttack : Attacking
                 }
                 if (AttackSpeed <= 0)
                 {
-                    Enemy.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage());
+                    Enemy.GetComponent<Status>().Damage(GetComponent<Status>().GetAttackDamage() + Bonus);
                     AttackSpeed = transform.GetComponent<Status>().GetAttackSpeed();
                     shotprefab = Instantiate(shot, transform.position + new Vector3(0,1,0), Quaternion.identity);
                     shotprefab.GetComponent<Throw>().Enemy = Enemy;
@@ -184,11 +267,11 @@ public class DistanceAttack : Attacking
                 SetCondition("Attacking");
                 if (Enemy == null || Enemy.GetComponent<Status>().GetHp() <= 0)
                 {
-                    moving.nvo.enabled = false;
-                    moving.nv.enabled = true;
                     moving.nv.stoppingDistance = 0;
                     SetCondition("Moving");
                     moving.Destination = moving.DestBeforeAttack;
+                    moving.nv.isStopped = false;
+                    moving.nv.SetDestination(moving.Destination);
                     Attack = false;
                     return;
                 }

@@ -23,7 +23,8 @@ public class MoveBlockController : MonoBehaviour
         {
             foreach(GameObject moveblock in MoveBlock)
             {
-                moveblock.SetActive(true);
+                moveblock.transform.GetComponent<Renderer>().enabled = true;
+                moveblock.transform.GetComponent<BoxCollider>().enabled = true;
             }
             MoveBlockStatus.active = true;
         }
@@ -31,7 +32,8 @@ public class MoveBlockController : MonoBehaviour
         {
             foreach (GameObject moveblock in MoveBlock)
             {
-                moveblock.SetActive(false);
+                moveblock.transform.GetComponent<Renderer>().enabled = false;
+                moveblock.transform.GetComponent<BoxCollider>().enabled = false;
             }
             MoveBlockStatus.active = false;
         }
